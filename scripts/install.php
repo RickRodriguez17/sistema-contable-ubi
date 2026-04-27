@@ -28,9 +28,10 @@ try {
     exit(1);
 }
 
-$schema = file_get_contents(__DIR__ . '/../db/schema.sql');
-$seed   = file_get_contents(__DIR__ . '/../db/seed_puc.sql');
-if ($schema === false || $seed === false) {
+$schema   = file_get_contents(__DIR__ . '/../db/schema.sql');
+$seed     = file_get_contents(__DIR__ . '/../db/seed_puc.sql');
+$usuarios = file_get_contents(__DIR__ . '/../db/usuarios.sql');
+if ($schema === false || $seed === false || $usuarios === false) {
     $line("✗ No se encontraron los archivos SQL en db/");
     exit(1);
 }
@@ -48,6 +49,17 @@ if ($conn->multi_query($seed)) {
     $line("✓ PUC Bolivia cargado (db/seed_puc.sql)");
 } else {
     $line("✗ Error al ejecutar seed: " . $conn->error);
+    exit(1);
+}
+
+if ($conn->multi_query($usuarios)) {
+    do { /* drain */ } while ($conn->more_results() && $conn->next_result());
+    $line("✓ Usuarios de prueba cargados (db/usuarios.sql)");
+    $line("    admin    / 123456   (rol: admin)");
+    $line("    contador / 123456   (rol: contador)");
+    $line("    consulta / 123456   (rol: consulta)");
+} else {
+    $line("✗ Error al cargar usuarios: " . $conn->error);
     exit(1);
 }
 

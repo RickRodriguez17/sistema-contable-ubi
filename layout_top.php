@@ -1,29 +1,64 @@
 <?php
 /**
  * ContaUBI — encabezado HTML compartido + sidebar.
+ *
  * Variables esperadas: $pageTitle, $activePage, $EMPRESA (set por conexion.php).
+ *
+ * El menú lateral y los botones del topbar se filtran según el rol activo.
+ * Cada item del menú declara qué permiso necesita (auth_can()) para verse.
  */
 $pageTitle  = $pageTitle  ?? 'ContaUBI';
 $activePage = $activePage ?? '';
 $EMPRESA    = $EMPRESA    ?? ['nombre'=>'ContaUBI','ejercicio'=>(int)date('Y'),'logo_texto'=>'UBI','moneda'=>'Bs.'];
 
+/* Items del menú: [titulo, archivo, slug-activo, icono, permiso].
+ * Si archivo === '' => label de sección (sin link).
+ * El permiso se valida con auth_can(); si no se cumple, se oculta el item.
+ */
 $nav = [
-    ['Principal',   '',                                 ''],
-    ['Inicio',      'index.php',                'home',           'bi-grid-1x2'],
-    ['Plan de Cuentas','cuentas.php',           'cuentas',        'bi-list-columns-reverse'],
-    ['Empresa',     'empresa.php',              'empresa',        'bi-building'],
+    ['Principal',            '',                          '',                  '',                                'dashboard.ver'],
+    ['Inicio',               'index.php',                 'home',              'bi-grid-1x2',                     'dashboard.ver'],
+    ['Plan de Cuentas',      'cuentas.php',               'cuentas',           'bi-list-columns-reverse',         'cuentas.ver'],
+    ['Empresa',              'empresa.php',               'empresa',           'bi-building',                     'empresa.editar'],
+    ['Usuarios',             'usuarios.php',              'usuarios',          'bi-people',                       'usuarios.gestionar'],
 
-    ['Diario',      '',                                 ''],
-    ['Comprobantes','comprobantes.php',         'comprobantes',   'bi-receipt'],
-    ['Nuevo Asiento','comprobante_crear.php',   'comprobante_crear','bi-plus-circle'],
-    ['Libro Diario','libro_diario.php',         'libro_diario',   'bi-journal-text'],
+    ['Diario',               '',                          '',                  '',                                'comprobantes.ver'],
+    ['Comprobantes',         'comprobantes.php',          'comprobantes',      'bi-receipt',                      'comprobantes.ver'],
+    ['Nuevo Asiento',        'comprobante_crear.php',     'comprobante_crear', 'bi-plus-circle',                  'comprobantes.crear'],
+    ['Libro Diario',         'libro_diario.php',          'libro_diario',      'bi-journal-text',                 'reportes.ver'],
 
-    ['Reportes',    '',                                 ''],
-    ['Libro Mayor', 'libro_mayor.php',          'libro_mayor',    'bi-book'],
-    ['Bal. Comprobación','balance_comprobacion.php','balance_comp', 'bi-table'],
-    ['Estado de Resultados','estado_resultados.php','estado_resultados','bi-graph-up'],
-    ['Balance General','balance_general.php',   'balance_general','bi-layout-text-sidebar-reverse'],
+    ['Reportes',             '',                          '',                  '',                                'reportes.ver'],
+    ['Libro Mayor',          'libro_mayor.php',           'libro_mayor',       'bi-book',                         'reportes.ver'],
+    ['Bal. Comprobación',    'balance_comprobacion.php',  'balance_comp',      'bi-table',                        'reportes.ver'],
+    ['Estado de Resultados', 'estado_resultados.php',     'estado_resultados', 'bi-graph-up',                     'reportes.ver'],
+    ['Balance General',      'balance_general.php',       'balance_general',   'bi-layout-text-sidebar-reverse',  'reportes.ver'],
 ];
+
+/* Filtramos items por permisos del rol actual.
+ * Una sección sólo se muestra si tiene al menos un item visible debajo. */
+$navVisibles = [];
+foreach ($nav as $item) {
+    [$titulo, $archivo, $slug, $icono, $perm] = array_pad($item, 5, '');
+    if (!function_exists('auth_can') || !auth_can($perm)) continue;
+    $navVisibles[] = $item;
+}
+/* Quitar labels de sección que quedaron sin items debajo. */
+$navFinal = [];
+$n = count($navVisibles);
+for ($i = 0; $i < $n; $i++) {
+    [$_t, $arch, $_s, $_i, $_p] = array_pad($navVisibles[$i], 5, '');
+    if ($arch === '') {
+        $tieneHijos = false;
+        for ($j = $i + 1; $j < $n; $j++) {
+            if ($navVisibles[$j][1] === '') break;
+            $tieneHijos = true; break;
+        }
+        if (!$tieneHijos) continue;
+    }
+    $navFinal[] = $navVisibles[$i];
+}
+
+$me = function_exists('auth_user') ? auth_user() : null;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -50,11 +85,11 @@ $nav = [
     </div>
 
     <?php
-    foreach ($nav as $item) {
+    foreach ($navFinal as $item) {
         if ($item[1] === '') {
             echo "<div class='section-label'>" . h($item[0]) . "</div>";
         } else {
-            $cls = ($activePage === $item[2]) ? 'nav active' : 'nav';
+            $cls  = ($activePage === $item[2]) ? 'nav active' : 'nav';
             $icon = $item[3] ?? 'bi-circle';
             echo "<a href='" . h($item[1]) . "' class='" . $cls . "'>"
                . "<i class='bi " . h($icon) . "'></i> " . h($item[0]) . "</a>";
@@ -76,6 +111,16 @@ $nav = [
           <i class="bi bi-calendar3"></i>
           Ejercicio <?= h($EMPRESA['ejercicio']) ?>
         </span>
+        <?php if ($me): ?>
+          <span class="user-tag" title="<?= h($me['nombre']) ?> (<?= h($me['rol']) ?>)">
+            <i class="bi bi-person-circle"></i>
+            <span class="user-name"><?= h($me['nombre']) ?></span>
+            <span class="rol-chip rol-<?= h($me['rol']) ?>"><?= strtoupper(h($me['rol'])) ?></span>
+          </span>
+          <a href="logout.php" class="btn btn-ghost btn-sm" title="Cerrar sesión">
+            <i class="bi bi-box-arrow-right"></i> Salir
+          </a>
+        <?php endif; ?>
       </div>
     </div>
     <div class="body-pane">

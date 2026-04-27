@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
 
 $pageTitle  = 'Plan de Cuentas';
 $pageIcon   = 'bi-list-columns-reverse';
@@ -108,7 +109,9 @@ include __DIR__ . '/layout_top.php';
   <span class="text-muted"><?= count($rows) ?> resultado(s)</span>
   <div class="no-print" style="display:flex;gap:.5rem">
     <button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
-    <a class="btn btn-primary" href="cuenta_crear.php"><i class="bi bi-plus-circle"></i> Nueva Cuenta Analítica</a>
+    <?php if (auth_can('cuentas.gestionar')): ?>
+      <a class="btn btn-primary" href="cuenta_crear.php"><i class="bi bi-plus-circle"></i> Nueva Cuenta Analítica</a>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -170,18 +173,22 @@ include __DIR__ . '/layout_top.php';
               <?php endif; ?>
             </td>
             <td class="text-center no-print">
-              <a class="btn btn-ghost btn-sm" href="cuenta_editar.php?id=<?= (int)$r['id'] ?>" title="Editar">
-                <i class="bi bi-pencil"></i>
-              </a>
-              <?php if ((int)$r['es_puct'] !== 1): ?>
-                <form method="POST" action="cuenta_eliminar.php" style="display:inline" onsubmit="return confirm('¿Eliminar la cuenta <?= h($r['codigo']) ?>?\nSolo se puede borrar si no tiene movimientos.');">
-                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                  <button class="btn btn-ghost btn-sm" title="Eliminar"><i class="bi bi-trash text-danger"></i></button>
-                </form>
+              <?php if (auth_can('cuentas.gestionar')): ?>
+                <a class="btn btn-ghost btn-sm" href="cuenta_editar.php?id=<?= (int)$r['id'] ?>" title="Editar">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <?php if ((int)$r['es_puct'] !== 1): ?>
+                  <form method="POST" action="cuenta_eliminar.php" style="display:inline" onsubmit="return confirm('¿Eliminar la cuenta <?= h($r['codigo']) ?>?\nSolo se puede borrar si no tiene movimientos.');">
+                    <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                    <button class="btn btn-ghost btn-sm" title="Eliminar"><i class="bi bi-trash text-danger"></i></button>
+                  </form>
+                <?php else: ?>
+                  <span class="btn btn-ghost btn-sm" style="opacity:.4;cursor:not-allowed" title="Cuenta PUCT — no se puede eliminar">
+                    <i class="bi bi-shield-lock"></i>
+                  </span>
+                <?php endif; ?>
               <?php else: ?>
-                <span class="btn btn-ghost btn-sm" style="opacity:.4;cursor:not-allowed" title="Cuenta PUCT — no se puede eliminar">
-                  <i class="bi bi-shield-lock"></i>
-                </span>
+                <span class="text-muted" style="font-size:.75rem">—</span>
               <?php endif; ?>
             </td>
           </tr>

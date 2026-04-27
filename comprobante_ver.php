@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
 
 $pageTitle  = 'Comprobante';
 $pageIcon   = 'bi-receipt';
@@ -11,8 +12,12 @@ $activePage = 'comprobantes';
 
 $id = (int)($_GET['id'] ?? 0);
 
-/* Acción POST: aprobar / anular */
+/* Acción POST: aprobar / anular (sólo admin) */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!auth_can('comprobantes.aprobar')) {
+        flash_set('No tenés permiso para aprobar o anular comprobantes.', 'danger');
+        header('Location: comprobantes.php'); exit;
+    }
     $accion = $_POST['accion'] ?? '';
     $cidPost = (int)($_POST['id'] ?? 0);
     $cur = $conn->query("SELECT * FROM comprobantes WHERE id=$cidPost")->fetch_assoc();
@@ -54,6 +59,7 @@ include __DIR__ . '/layout_top.php';
   <a href="comprobantes.php" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
   <div style="display:flex;gap:.5rem">
     <button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+    <?php if (auth_can('comprobantes.aprobar')): ?>
     <?php if ($cur['estado'] === 'BORRADOR'): ?>
       <form method="POST" style="display:inline" onsubmit="return confirm('¿Aprobar el comprobante? Una vez aprobado afecta a los reportes.')">
         <input type="hidden" name="id" value="<?= $id ?>">
@@ -78,6 +84,7 @@ include __DIR__ . '/layout_top.php';
         <button class="btn"><i class="bi bi-arrow-counterclockwise"></i> Reactivar</button>
       </form>
     <?php endif; ?>
+    <?php endif; /* auth_can comprobantes.aprobar */ ?>
   </div>
 </div>
 

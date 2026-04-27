@@ -13,6 +13,8 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
+auth_require('cuentas.gestionar');
 
 $pageTitle  = 'Nueva Cuenta Analítica';
 $pageIcon   = 'bi-plus-circle';
