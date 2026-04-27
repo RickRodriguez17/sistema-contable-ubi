@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
 
 $pageTitle  = 'Comprobantes';
 $pageIcon   = 'bi-receipt';
@@ -70,7 +71,9 @@ include __DIR__ . '/layout_top.php';
 
 <div class="card-header" style="background:transparent;border:0;padding:0 0 .75rem 0">
   <span class="text-muted"><?= count($rows) ?> comprobante(s)</span>
-  <a class="btn btn-primary" href="comprobante_crear.php"><i class="bi bi-plus-circle"></i> Nuevo Asiento</a>
+  <?php if (auth_can('comprobantes.crear')): ?>
+    <a class="btn btn-primary" href="comprobante_crear.php"><i class="bi bi-plus-circle"></i> Nuevo Asiento</a>
+  <?php endif; ?>
 </div>
 
 <div class="card">

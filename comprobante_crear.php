@@ -12,6 +12,8 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
+auth_require('comprobantes.crear');
 
 $pageTitle  = 'Nuevo Asiento';
 $pageIcon   = 'bi-plus-circle';

@@ -15,6 +15,7 @@ USE contaubi;
 DROP TABLE IF EXISTS movimientos;
 DROP TABLE IF EXISTS comprobantes;
 DROP TABLE IF EXISTS cuentas;
+DROP TABLE IF EXISTS usuarios;
 DROP TABLE IF EXISTS empresa;
 
 CREATE TABLE empresa (
@@ -110,4 +111,25 @@ CREATE TABLE movimientos (
     CONSTRAINT fk_mov_cuenta FOREIGN KEY (cuenta_id)      REFERENCES cuentas(id) ON DELETE RESTRICT,
     KEY idx_comp (comprobante_id),
     KEY idx_cuenta (cuenta_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Usuarios (login y control de acceso por rol)
+--   admin    → acceso total + gestión de usuarios
+--   contador → registra movimientos / crea comprobantes / ve reportes
+--   consulta → sólo lectura (dashboard + reportes)
+-- Las contraseñas se guardan hasheadas con password_hash() (bcrypt).
+-- Los seeds están en db/usuarios.sql (3 usuarios de prueba).
+-- ------------------------------------------------------------
+CREATE TABLE usuarios (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    nombre    VARCHAR(120) NOT NULL,
+    usuario   VARCHAR(50)  NOT NULL,
+    password  VARCHAR(255) NOT NULL,
+    rol       ENUM('admin','contador','consulta') NOT NULL DEFAULT 'consulta',
+    estado    ENUM('activo','inactivo')           NOT NULL DEFAULT 'activo',
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_usuario (usuario),
+    KEY idx_rol (rol),
+    KEY idx_estado (estado)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -4,6 +4,8 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
+auth_require('empresa.editar');
 
 $pageTitle  = 'Empresa';
 $pageIcon   = 'bi-building';
