@@ -50,9 +50,9 @@ include __DIR__ . '/layout_top.php';
 <div class="anim">
   <div class="kpi-grid">
     <div class="kpi">
-      <div class="kpi-label"><i class="bi bi-list-columns-reverse"></i> Cuentas Imputables</div>
+      <div class="kpi-label"><i class="bi bi-list-columns-reverse"></i> Cuentas Analíticas</div>
       <div class="kpi-value"><?= $totalCuentas ?></div>
-      <div class="kpi-sub"><?= $totalGruposCab ?> grupos / cabeceras</div>
+      <div class="kpi-sub">+ <?= $totalGruposCab ?> cuentas del PUCT (estructura)</div>
     </div>
     <div class="kpi kpi-info">
       <div class="kpi-label"><i class="bi bi-receipt"></i> Comprobantes (vigentes)</div>
@@ -97,7 +97,7 @@ include __DIR__ . '/layout_top.php';
           for ($c=1; $c<=5; $c++):
             $s = (float)($saldoPorClase[$c] ?? 0);
             $pct = abs($s) / $maxAbs * 100;
-            $color = ['1'=>'#14b86a','2'=>'#e0524d','3'=>'#4f8ef7','4'=>'#14b86a','5'=>'#e0a44d'][$c];
+            $color = ['1'=>'#0fa257','2'=>'#d33d39','3'=>'#2563eb','4'=>'#0fa257','5'=>'#d18516'][$c];
           ?>
             <tr>
               <td>
@@ -105,7 +105,7 @@ include __DIR__ . '/layout_top.php';
               </td>
               <td class="text-right num fw-700"><?= money($s) ?></td>
               <td>
-                <div style="background: rgba(255,255,255,.05); border-radius: 4px; height: 8px; overflow: hidden;">
+                <div style="background: var(--bg-3); border-radius: 4px; height: 8px; overflow: hidden;">
                   <div style="width: <?= number_format($pct,1) ?>%; height: 100%; background: <?= $color ?>;"></div>
                 </div>
               </td>

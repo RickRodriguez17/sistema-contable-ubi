@@ -38,32 +38,40 @@ VALUES ('Universidad Boliviana de Informática', '1023456789', 'La Paz', 'Av. Ar
         'Bs.', 2026, '2026-01-01', '2026-12-31');
 
 -- ------------------------------------------------------------
--- Plan de Cuentas (PUC Bolivia, código de 8 dígitos)
---   codigo = G S CC SS AA
---   G  Clase     (1-5)
---   S  Grupo     (1-9)
---   CC Cuenta    (01-99)
---   SS Subcuenta (01-99)
---   AA Auxiliar  (00-99)  · 00 = mayor sin auxiliar
+-- Plan de Cuentas (PUCT Bolivia – Plan Único de Cuentas Tributario)
+-- Codificación de 8 dígitos:  C·G·SG·CP·CA  (1+1+2+2+2)
+--   C   Clase             1 dígito  (1-5)              cerrado por PUCT
+--   G   Grupo             1 dígito                      cerrado por PUCT
+--   SG  Subgrupo          2 dígitos                     cerrado por PUCT
+--   CP  Cuenta Principal  2 dígitos                     cerrado por PUCT
+--   CA  Cuenta Analítica  2 dígitos (00-99)             abierto al contribuyente
+-- nivel : 1=Clase 2=Grupo 3=Subgrupo 4=Cta. Principal 5=Cta. Analítica
+-- es_puct : 1 = forma parte del PUCT oficial (inmutable)
+--           0 = analítica creada por el contribuyente (editable / borrable)
+-- es_imputable : sólo el nivel 5 (CA) acepta movimientos contables
 -- ------------------------------------------------------------
 CREATE TABLE cuentas (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    codigo      VARCHAR(8)   NOT NULL,
-    clase       TINYINT      NOT NULL,
-    grupo       TINYINT      NOT NULL,
-    cuenta      TINYINT      NOT NULL,
-    subcuenta   TINYINT      NOT NULL DEFAULT 0,
-    auxiliar    TINYINT      NOT NULL DEFAULT 0,
-    nombre      VARCHAR(120) NOT NULL,
-    descripcion TEXT,
-    naturaleza  ENUM('DEUDORA','ACREEDORA') NOT NULL,
-    es_imputable TINYINT(1) NOT NULL DEFAULT 1,  -- 1 = se pueden registrar movimientos; 0 = solo agrupación
-    activa      TINYINT(1)  NOT NULL DEFAULT 1,
-    creado_en   TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    codigo            VARCHAR(8)   NOT NULL,
+    clase             TINYINT      NOT NULL,
+    grupo             TINYINT      NOT NULL DEFAULT 0,
+    subgrupo          TINYINT      NOT NULL DEFAULT 0,
+    cuenta_principal  TINYINT      NOT NULL DEFAULT 0,
+    cuenta_analitica  TINYINT      NOT NULL DEFAULT 0,
+    nivel             TINYINT      NOT NULL DEFAULT 5,
+    nombre            VARCHAR(160) NOT NULL,
+    descripcion       TEXT,
+    naturaleza        ENUM('DEUDORA','ACREEDORA') NOT NULL,
+    es_imputable      TINYINT(1)   NOT NULL DEFAULT 0,
+    es_puct           TINYINT(1)   NOT NULL DEFAULT 1,
+    activa            TINYINT(1)   NOT NULL DEFAULT 1,
+    creado_en         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_codigo (codigo),
-    UNIQUE KEY uniq_nombre_nivel (clase, grupo, cuenta, subcuenta, nombre),
+    UNIQUE KEY uniq_nombre_nivel (clase, grupo, subgrupo, cuenta_principal, cuenta_analitica, nombre),
     KEY idx_clase (clase),
-    KEY idx_imputable (es_imputable, activa)
+    KEY idx_nivel (nivel, activa),
+    KEY idx_imputable (es_imputable, activa),
+    KEY idx_puct (es_puct)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

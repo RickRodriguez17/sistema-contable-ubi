@@ -13,7 +13,8 @@ $activePage = 'cuentas';
 $fClase     = $_GET['clase']     ?? '';
 $fNaturaleza= $_GET['naturaleza']?? '';
 $fEstado    = $_GET['estado']    ?? '';
-$fImputable = $_GET['imputable'] ?? '';
+$fNivel     = $_GET['nivel']     ?? '';
+$fOrigen    = $_GET['origen']    ?? '';
 $fQ         = trim($_GET['q']    ?? '');
 
 $where  = []; $params = []; $types = '';
@@ -21,8 +22,9 @@ if ($fClase !== '' && ctype_digit($fClase) && $fClase >= 1 && $fClase <= 5) { $w
 if ($fNaturaleza === 'DEUDORA' || $fNaturaleza === 'ACREEDORA')              { $where[]='naturaleza = ?'; $types.='s'; $params[]=$fNaturaleza; }
 if ($fEstado === 'activa')   { $where[]='activa = 1'; }
 if ($fEstado === 'inactiva') { $where[]='activa = 0'; }
-if ($fImputable === 'si') { $where[]='es_imputable = 1'; }
-if ($fImputable === 'no') { $where[]='es_imputable = 0'; }
+if (ctype_digit($fNivel) && $fNivel >= 1 && $fNivel <= 5) { $where[]='nivel = ?'; $types.='i'; $params[]=(int)$fNivel; }
+if ($fOrigen === 'puct')   { $where[]='es_puct = 1'; }
+if ($fOrigen === 'propia') { $where[]='es_puct = 0'; }
 if ($fQ !== '') { $where[]='(LOWER(nombre) LIKE ? OR codigo LIKE ?)'; $types.='ss'; $like='%'.mb_strtolower($fQ).'%'; $params[]=$like; $params[]=$like; }
 
 $sql = "SELECT * FROM cuentas " . ($where ? 'WHERE '.implode(' AND ',$where) : '') . " ORDER BY codigo ASC";
@@ -42,11 +44,11 @@ include __DIR__ . '/layout_top.php';
 
 <div class="kpi-grid no-print">
   <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-value"><?= $total ?></div></div>
-  <div class="kpi"><div class="kpi-label">Activos</div><div class="kpi-value" style="color:#6ee9a6"><?= $byClase[1] ?></div></div>
-  <div class="kpi"><div class="kpi-label">Pasivos</div><div class="kpi-value" style="color:#ff8e8a"><?= $byClase[2] ?></div></div>
-  <div class="kpi"><div class="kpi-label">Patrimonio</div><div class="kpi-value" style="color:#94b5ff"><?= $byClase[3] ?></div></div>
-  <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value" style="color:#6ee9a6"><?= $byClase[4] ?></div></div>
-  <div class="kpi"><div class="kpi-label">Egresos</div><div class="kpi-value" style="color:#ffd28a"><?= $byClase[5] ?></div></div>
+  <div class="kpi kpi-activo"><div class="kpi-label">Activos</div><div class="kpi-value"><?= $byClase[1] ?></div></div>
+  <div class="kpi kpi-pasivo"><div class="kpi-label">Pasivos</div><div class="kpi-value"><?= $byClase[2] ?></div></div>
+  <div class="kpi kpi-patrimonio"><div class="kpi-label">Patrimonio</div><div class="kpi-value"><?= $byClase[3] ?></div></div>
+  <div class="kpi kpi-ingresos"><div class="kpi-label">Ingresos</div><div class="kpi-value"><?= $byClase[4] ?></div></div>
+  <div class="kpi kpi-egresos"><div class="kpi-label">Egresos</div><div class="kpi-value"><?= $byClase[5] ?></div></div>
 </div>
 
 <form method="GET" class="filtros no-print">
@@ -60,19 +62,28 @@ include __DIR__ . '/layout_top.php';
     </select>
   </div>
   <div class="form-group">
+    <label class="form-label">Nivel</label>
+    <select name="nivel" class="form-control">
+      <option value="">Todos</option>
+      <?php foreach ([1=>'Clase',2=>'Grupo',3=>'Subgrupo',4=>'Cta. Principal',5=>'Cta. Analítica'] as $k=>$v): ?>
+        <option value="<?= $k ?>" <?= (string)$fNivel===(string)$k?'selected':'' ?>><?= $k ?> · <?= $v ?></option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Origen</label>
+    <select name="origen" class="form-control">
+      <option value="">Cualquiera</option>
+      <option value="puct"   <?= $fOrigen==='puct'  ?'selected':'' ?>>PUCT (oficial)</option>
+      <option value="propia" <?= $fOrigen==='propia'?'selected':'' ?>>Mis analíticas</option>
+    </select>
+  </div>
+  <div class="form-group">
     <label class="form-label">Naturaleza</label>
     <select name="naturaleza" class="form-control">
       <option value="">Todas</option>
       <option value="DEUDORA"  <?= $fNaturaleza==='DEUDORA' ?'selected':'' ?>>Deudora</option>
       <option value="ACREEDORA"<?= $fNaturaleza==='ACREEDORA'?'selected':'' ?>>Acreedora</option>
-    </select>
-  </div>
-  <div class="form-group">
-    <label class="form-label">Imputable</label>
-    <select name="imputable" class="form-control">
-      <option value="">Cualquiera</option>
-      <option value="si" <?= $fImputable==='si'?'selected':'' ?>>Solo cuentas de movimiento</option>
-      <option value="no" <?= $fImputable==='no'?'selected':'' ?>>Solo cabeceras / agrupación</option>
     </select>
   </div>
   <div class="form-group">
@@ -97,7 +108,7 @@ include __DIR__ . '/layout_top.php';
   <span class="text-muted"><?= count($rows) ?> resultado(s)</span>
   <div class="no-print" style="display:flex;gap:.5rem">
     <button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
-    <a class="btn btn-primary" href="cuenta_crear.php"><i class="bi bi-plus-circle"></i> Nueva Cuenta</a>
+    <a class="btn btn-primary" href="cuenta_crear.php"><i class="bi bi-plus-circle"></i> Nueva Cuenta Analítica</a>
   </div>
 </div>
 
@@ -120,48 +131,58 @@ include __DIR__ . '/layout_top.php';
             <th style="min-width:110px">Código</th>
             <th>Nombre / Descripción</th>
             <th>Clase</th>
+            <th>Nivel</th>
             <th>Nat.</th>
-            <th class="text-center">Imputable</th>
+            <th>Origen</th>
             <th class="text-center">Activa</th>
             <th class="text-center no-print"></th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($rows as $r):
-            $isHeader = !$r['es_imputable'];
+            $nivel = (int)$r['nivel'];
+            $isHeader = $nivel < 5;
+            $cls = 'fila-nivel-' . $nivel . ($isHeader ? ' fila-grupo' : '');
           ?>
-          <tr<?= $isHeader ? ' class="fila-grupo"' : '' ?>>
+          <tr class="<?= $cls ?>">
             <td><span class="chip"><?= h($r['codigo']) ?></span></td>
             <td>
-              <div class="fw-600"><?= h($r['nombre']) ?></div>
+              <div class="fw-600" style="padding-left: <?= ($nivel-1)*0.5 ?>rem"><?= h($r['nombre']) ?></div>
               <?php if (!empty($r['descripcion'])): ?>
-                <div class="text-muted" style="font-size:.78rem"><?= h($r['descripcion']) ?></div>
+                <div class="text-muted" style="font-size:.78rem;padding-left: <?= ($nivel-1)*0.5 ?>rem"><?= h($r['descripcion']) ?></div>
               <?php endif; ?>
             </td>
             <td><span class="badge <?= clase_badge((int)$r['clase']) ?>"><?= nombre_clase((int)$r['clase']) ?></span></td>
+            <td><span class="badge badge-nivel">N<?= $nivel ?> · <?= h(nombre_nivel($nivel)) ?></span></td>
             <td><span class="text-muted" style="font-size:.78rem"><?= h(substr($r['naturaleza'],0,4)) ?>.</span></td>
-            <td class="text-center">
-              <?php if ($r['es_imputable']): ?>
-                <i class="bi bi-check-circle-fill" style="color:#6ee9a6" title="Acepta movimientos"></i>
+            <td>
+              <?php if ((int)$r['es_puct'] === 1): ?>
+                <span class="badge badge-puct" title="Estructura oficial del SIN — inmutable">PUCT</span>
               <?php else: ?>
-                <i class="bi bi-folder2" style="color:var(--gold-2)" title="Sólo agrupación"></i>
+                <span class="badge badge-propia" title="Cuenta analítica del contribuyente">Propia</span>
               <?php endif; ?>
             </td>
             <td class="text-center">
               <?php if ($r['activa']): ?>
-                <i class="bi bi-circle-fill" style="color:#6ee9a6;font-size:.6rem"></i>
+                <i class="bi bi-circle-fill text-success" title="Activa"></i>
               <?php else: ?>
-                <i class="bi bi-circle" style="color:var(--muted);font-size:.6rem"></i>
+                <i class="bi bi-circle text-muted" title="Inactiva"></i>
               <?php endif; ?>
             </td>
             <td class="text-center no-print">
               <a class="btn btn-ghost btn-sm" href="cuenta_editar.php?id=<?= (int)$r['id'] ?>" title="Editar">
                 <i class="bi bi-pencil"></i>
               </a>
-              <form method="POST" action="cuenta_eliminar.php" style="display:inline" onsubmit="return confirm('¿Eliminar la cuenta <?= h($r['codigo']) ?>?\nSolo se puede borrar si no tiene movimientos.');">
-                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                <button class="btn btn-ghost btn-sm" title="Eliminar"><i class="bi bi-trash" style="color:var(--danger)"></i></button>
-              </form>
+              <?php if ((int)$r['es_puct'] !== 1): ?>
+                <form method="POST" action="cuenta_eliminar.php" style="display:inline" onsubmit="return confirm('¿Eliminar la cuenta <?= h($r['codigo']) ?>?\nSolo se puede borrar si no tiene movimientos.');">
+                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                  <button class="btn btn-ghost btn-sm" title="Eliminar"><i class="bi bi-trash text-danger"></i></button>
+                </form>
+              <?php else: ?>
+                <span class="btn btn-ghost btn-sm" style="opacity:.4;cursor:not-allowed" title="Cuenta PUCT — no se puede eliminar">
+                  <i class="bi bi-shield-lock"></i>
+                </span>
+              <?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -171,5 +192,3 @@ include __DIR__ . '/layout_top.php';
     <?php endif; ?>
   </div>
 </div>
-
-<?php include __DIR__ . '/layout_bottom.php'; ?>
