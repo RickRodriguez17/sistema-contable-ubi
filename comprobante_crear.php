@@ -41,10 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $lineas = [];
     $totalD = 0.0; $totalH = 0.0;
+    $excedeDecimales = false;
     for ($i=0; $i<count($cuentaIds); $i++) {
         $cid = (int)$cuentaIds[$i];
-        $d   = (float)str_replace(',', '', $debes[$i]   ?? 0);
-        $h   = (float)str_replace(',', '', $haberes[$i] ?? 0);
+        $rawD = trim((string)($debes[$i]   ?? ''));
+        $rawH = trim((string)($haberes[$i] ?? ''));
+        $rawD = str_replace(',', '.', $rawD);
+        $rawH = str_replace(',', '.', $rawH);
+        if ($rawD !== '' && !preg_match('/^\d+(\.\d{1,2})?$/', $rawD)) $excedeDecimales = true;
+        if ($rawH !== '' && !preg_match('/^\d+(\.\d{1,2})?$/', $rawH)) $excedeDecimales = true;
+        $d   = round((float)($rawD === '' ? 0 : $rawD), 2);
+        $h   = round((float)($rawH === '' ? 0 : $rawH), 2);
         $g   = trim($glosas[$i] ?? '');
         if ($cid <= 0 && $d == 0 && $h == 0) continue;
         $lineas[] = ['cuenta_id'=>$cid,'debe'=>$d,'haber'=>$h,'glosa_linea'=>$g];
@@ -54,11 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $old['fecha']))         $error = 'Fecha inválida.';
     elseif ($old['fecha'] < $EMPRESA['fecha_inicio_ejercicio'] ||
-            $old['fecha'] > $EMPRESA['fecha_cierre_ejercicio'])       $error = 'La fecha está fuera del ejercicio ' . $EMPRESA['ejercicio'] . '.';
+            $old['fecha'] > $EMPRESA['fecha_cierre_ejercicio'])       $error = 'La fecha está fuera del período contable activo.';
     elseif (!in_array($old['tipo'], ['INGRESO','EGRESO','TRASPASO','APERTURA','CIERRE','AJUSTE'], true))
                                                                      $error = 'Tipo de comprobante inválido.';
     elseif ($old['glosa'] === '')                                    $error = 'La glosa es obligatoria.';
     elseif (mb_strlen($old['glosa']) > 255)                          $error = 'La glosa supera los 255 caracteres.';
+    elseif ($excedeDecimales)                                        $error = 'Los montos sólo admiten hasta 2 decimales.';
     elseif (count($lineas) < 2)                                      $error = 'Se requieren al menos 2 líneas con monto.';
     elseif (!comprobante_cuadra($totalD, $totalH))                   $error = 'El asiento no cuadra: Debe ' . money($totalD) . ' ≠ Haber ' . money($totalH) . '.';
     else {
@@ -130,7 +138,7 @@ include __DIR__ . '/layout_top.php';
                min="<?= h($EMPRESA['fecha_inicio_ejercicio']) ?>"
                max="<?= h($EMPRESA['fecha_cierre_ejercicio']) ?>"
                value="<?= h($old['fecha']) ?>">
-        <div class="form-hint">Ejercicio: <?= h($EMPRESA['fecha_inicio_ejercicio']) ?> a <?= h($EMPRESA['fecha_cierre_ejercicio']) ?></div>
+        <div class="form-hint">Período: <?= h($EMPRESA['fecha_inicio_ejercicio']) ?> a <?= h($EMPRESA['fecha_cierre_ejercicio']) ?></div>
       </div>
       <div class="form-group">
         <label class="form-label">Tipo</label>
@@ -187,8 +195,8 @@ include __DIR__ . '/layout_top.php';
               </select>
             </td>
             <td><input type="text" name="glosa_linea[]" class="form-control" maxlength="255" value="<?= h($ln['glosa_linea']) ?>"></td>
-            <td><input type="number" step="0.01" min="0" name="debe[]"  class="form-control text-right num" value="<?= $ln['debe']>0?h(number_format($ln['debe'],2,'.','')):'' ?>" oninput="actualizarTotales();sincronDebe(this)"></td>
-            <td><input type="number" step="0.01" min="0" name="haber[]" class="form-control text-right num" value="<?= $ln['haber']>0?h(number_format($ln['haber'],2,'.','')):'' ?>" oninput="actualizarTotales();sincronHaber(this)"></td>
+            <td><input type="number" step="0.01" min="0" name="debe[]"  class="form-control text-right num" value="<?= $ln['debe']>0?h(number_format($ln['debe'],2,'.','')):'' ?>" inputmode="decimal" oninput="limitarDecimales(this);sincronDebe(this);actualizarTotales()" onblur="formatearMonto(this);actualizarTotales()"></td>
+            <td><input type="number" step="0.01" min="0" name="haber[]" class="form-control text-right num" value="<?= $ln['haber']>0?h(number_format($ln['haber'],2,'.','')):'' ?>" inputmode="decimal" oninput="limitarDecimales(this);sincronHaber(this);actualizarTotales()" onblur="formatearMonto(this);actualizarTotales()"></td>
             <td class="text-center"><button type="button" class="btn btn-ghost btn-sm" onclick="quitarLinea(this)"><i class="bi bi-x-lg" style="color:var(--danger)"></i></button></td>
           </tr>
           <?php endforeach; ?>
@@ -230,8 +238,8 @@ include __DIR__ . '/layout_top.php';
       </select>
     </td>
     <td><input type="text" name="glosa_linea[]" class="form-control" maxlength="255"></td>
-    <td><input type="number" step="0.01" min="0" name="debe[]"  class="form-control text-right num" oninput="actualizarTotales();sincronDebe(this)"></td>
-    <td><input type="number" step="0.01" min="0" name="haber[]" class="form-control text-right num" oninput="actualizarTotales();sincronHaber(this)"></td>
+    <td><input type="number" step="0.01" min="0" name="debe[]"  class="form-control text-right num" inputmode="decimal" oninput="limitarDecimales(this);sincronDebe(this);actualizarTotales()" onblur="formatearMonto(this);actualizarTotales()"></td>
+    <td><input type="number" step="0.01" min="0" name="haber[]" class="form-control text-right num" inputmode="decimal" oninput="limitarDecimales(this);sincronHaber(this);actualizarTotales()" onblur="formatearMonto(this);actualizarTotales()"></td>
     <td class="text-center"><button type="button" class="btn btn-ghost btn-sm" onclick="quitarLinea(this)"><i class="bi bi-x-lg" style="color:var(--danger)"></i></button></td>
   </tr>
 </template>
@@ -251,6 +259,25 @@ function renumerar(){
   document.querySelectorAll('#bodyLineas tr').forEach((tr,i)=>{
     tr.children[0].textContent = '#' + (i+1);
   });
+}
+function limitarDecimales(inp){
+  // Permite sólo números con hasta 2 decimales. Si el usuario escribe más, se truncan.
+  let v = (inp.value || '').replace(',', '.');
+  // Quitar caracteres no numéricos (excepto un solo punto)
+  v = v.replace(/[^0-9.]/g, '');
+  const partes = v.split('.');
+  if (partes.length > 2) v = partes[0] + '.' + partes.slice(1).join('');
+  if (v.includes('.')) {
+    const [ent, dec] = v.split('.');
+    v = ent + '.' + dec.slice(0, 2);
+  }
+  if (inp.value !== v) inp.value = v;
+}
+function formatearMonto(inp){
+  if (inp.value === '' || inp.value === '.') { inp.value = ''; return; }
+  const n = parseFloat(inp.value);
+  if (isNaN(n) || n <= 0) { inp.value = ''; return; }
+  inp.value = n.toFixed(2);
 }
 function actualizarTotales(){
   let td=0, th=0;

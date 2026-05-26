@@ -107,11 +107,6 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .topbar h1 { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--text); }
 .topbar h1 i { color: var(--accent); margin-right: .35rem; }
 .topbar .topbar-right { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
-.topbar .ejercicio-tag {
-  background: var(--gold-3); color: var(--gold);
-  padding: .3rem .75rem; border-radius: 999px; font-size: .78rem; font-weight: 600;
-  border: 1px solid #f0e0b6;
-}
 .body-pane { padding: 1.75rem; flex: 1; }
 
 /* =========== Componentes =========== */
@@ -368,9 +363,21 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .anim { animation: fade-up .25s ease both; }
 
+/* =========== Marca de agua =========== */
+.app-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 420px 260px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='260'><text x='210' y='140' fill='rgba(10,138,72,0.10)' font-family='Inter,Segoe UI,sans-serif' font-size='28' font-weight='700' text-anchor='middle' transform='rotate(-24 210 140)'>Cristhofer y Ricardo</text></svg>");
+}
+
 /* =========== Print =========== */
 @media print {
   .sidebar, .topbar, .no-print { display: none !important; }
+  .app-watermark { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='260'><text x='210' y='140' fill='rgba(0,0,0,0.08)' font-family='Inter,Segoe UI,sans-serif' font-size='26' font-weight='700' text-anchor='middle' transform='rotate(-24 210 140)'>Cristhofer y Ricardo</text></svg>") !important; }
   .app-shell { grid-template-columns: 1fr !important; }
   .body-pane { padding: 0 !important; }
   body { background: #fff !important; color: #000 !important; font-size: 11px !important; }
