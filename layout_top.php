@@ -73,14 +73,16 @@ $me = function_exists('auth_user') ? auth_user() : null;
 </head>
 <body>
 
+<div class="app-watermark" aria-hidden="true"></div>
+
 <div class="app-shell">
 
   <aside class="sidebar">
     <div class="brand">
-      <img src="assets/img/logo.svg" alt="UBI">
+      <img src="assets/img/logo.svg" alt="ContaUBI">
       <div>
         <div class="title">ContaUBI</div>
-        <div class="sub">Univ. Boliviana de Informática</div>
+        <div class="sub">Sistema Contable</div>
       </div>
     </div>
 
@@ -99,29 +101,25 @@ $me = function_exists('auth_user') ? auth_user() : null;
 
     <div class="sidebar-footer">
       &copy; <?= date('Y') ?> ContaUBI<br>
-      v1.0 · Académico
+      v1.0
     </div>
   </aside>
 
   <div class="main">
     <div class="topbar">
       <h1><i class="bi <?= h($pageIcon ?? 'bi-app') ?>"></i> <?= h($pageTitle) ?></h1>
+      <?php if ($me): ?>
       <div class="topbar-right">
-        <span class="ejercicio-tag" title="Ejercicio contable activo">
-          <i class="bi bi-calendar3"></i>
-          Ejercicio <?= h($EMPRESA['ejercicio']) ?>
+        <span class="user-tag" title="<?= h($me['nombre']) ?> (<?= h($me['rol']) ?>)">
+          <i class="bi bi-person-circle"></i>
+          <span class="user-name"><?= h($me['nombre']) ?></span>
+          <span class="rol-chip rol-<?= h($me['rol']) ?>"><?= strtoupper(h($me['rol'])) ?></span>
         </span>
-        <?php if ($me): ?>
-          <span class="user-tag" title="<?= h($me['nombre']) ?> (<?= h($me['rol']) ?>)">
-            <i class="bi bi-person-circle"></i>
-            <span class="user-name"><?= h($me['nombre']) ?></span>
-            <span class="rol-chip rol-<?= h($me['rol']) ?>"><?= strtoupper(h($me['rol'])) ?></span>
-          </span>
-          <a href="logout.php" class="btn btn-ghost btn-sm" title="Cerrar sesión">
-            <i class="bi bi-box-arrow-right"></i> Salir
-          </a>
-        <?php endif; ?>
+        <a href="logout.php" class="btn btn-ghost btn-sm" title="Cerrar sesión">
+          <i class="bi bi-box-arrow-right"></i> Salir
+        </a>
       </div>
+      <?php endif; ?>
     </div>
     <div class="body-pane">
       <?php
