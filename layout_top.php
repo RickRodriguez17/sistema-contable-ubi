@@ -38,14 +38,16 @@ $nav = [
 </head>
 <body>
 
+<div class="app-watermark" aria-hidden="true"></div>
+
 <div class="app-shell">
 
   <aside class="sidebar">
     <div class="brand">
-      <img src="assets/img/logo.svg" alt="UBI">
+      <img src="assets/img/logo.svg" alt="ContaUBI">
       <div>
         <div class="title">ContaUBI</div>
-        <div class="sub">Univ. Boliviana de Informática</div>
+        <div class="sub">Sistema Contable</div>
       </div>
     </div>
 
@@ -64,19 +66,13 @@ $nav = [
 
     <div class="sidebar-footer">
       &copy; <?= date('Y') ?> ContaUBI<br>
-      v1.0 · Académico
+      v1.0
     </div>
   </aside>
 
   <div class="main">
     <div class="topbar">
       <h1><i class="bi <?= h($pageIcon ?? 'bi-app') ?>"></i> <?= h($pageTitle) ?></h1>
-      <div class="topbar-right">
-        <span class="ejercicio-tag" title="Ejercicio contable activo">
-          <i class="bi bi-calendar3"></i>
-          Ejercicio <?= h($EMPRESA['ejercicio']) ?>
-        </span>
-      </div>
     </div>
     <div class="body-pane">
       <?php
