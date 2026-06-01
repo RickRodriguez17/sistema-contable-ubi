@@ -36,7 +36,7 @@ unset($_SESSION['login_error'], $_SESSION['login_usuario']);
       <img src="assets/img/logo.svg" alt="UBI">
       <div>
         <div class="title">ContaUBI</div>
-        <div class="sub">Univ. Boliviana de Informática</div>
+        <div class="sub">Sistema Contable</div>
       </div>
     </div>
 
@@ -70,7 +70,7 @@ unset($_SESSION['login_error'], $_SESSION['login_usuario']);
 
     <div class="login-foot">
       <i class="bi bi-info-circle"></i>
-      Sistema contable · ejercicio académico
+      Sistema contable
     </div>
 
   </div>
