@@ -9,9 +9,11 @@ function h($s): string {
     return htmlspecialchars((string)($s ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-/** Formato de número con separadores y 2 decimales. */
+/** Formato de número con separadores y 2 decimales. Siempre valor absoluto.
+ *  Los montos contables (debe/haber/saldos) se exhiben sin signo negativo.
+ */
 function money($n): string {
-    return number_format((float)$n, 2, '.', ',');
+    return number_format(abs((float)$n), 2, '.', ',');
 }
 
 /** Formato de fecha YYYY-MM-DD a DD/MM/YYYY. */
@@ -98,3 +100,46 @@ function flash_get(): ?array {
     setcookie('contaubi_flash','',time()-1,'/');
     return is_array($d) ? $d : null;
 }
+
+/* =====================================================================
+ * Multimoneda y tipos de cambio
+ * ===================================================================== */
+
+/** Catálogo de monedas soportadas. Etiqueta visible + símbolo. */
+function monedas_disponibles(): array {
+    return [
+        'BOB' => ['simbolo' => 'Bs.', 'nombre' => 'Bolivianos'],
+        'USD' => ['simbolo' => '$us', 'nombre' => 'Dólares estadounidenses'],
+        'UFV' => ['simbolo' => 'UFV', 'nombre' => 'Unidad de Fomento a la Vivienda'],
+    ];
+}
+
+/** Símbolo de una moneda (BOB → Bs.) */
+function moneda_simbolo(string $cod): string {
+    $m = monedas_disponibles();
+    return $m[$cod]['simbolo'] ?? $cod;
+}
+
+/** Formato de monto con símbolo de moneda. */
+function money_m($n, string $moneda = 'BOB'): string {
+    return moneda_simbolo($moneda) . ' ' . number_format(abs((float)$n), 2, '.', ',');
+}
+
+/**
+ * Tipo de cambio vigente para una fecha dada.
+ * Devuelve [id, fecha, tasa_usd, ufv] o null si la tabla está vacía.
+ * Si no hay un registro para la fecha exacta, toma el más reciente anterior.
+ */
+function tipo_cambio_vigente(mysqli $conn, string $fecha = ''): ?array {
+    if ($fecha === '') $fecha = date('Y-m-d');
+    $stmt = $conn->prepare("SELECT id, fecha, tasa_usd, ufv
+                            FROM tipos_cambio
+                            WHERE fecha <= ?
+                            ORDER BY fecha DESC, id DESC
+                            LIMIT 1");
+    $stmt->bind_param('s', $fecha);
+    $stmt->execute();
+    $r = $stmt->get_result()->fetch_assoc();
+    return $r ?: null;
+}
+

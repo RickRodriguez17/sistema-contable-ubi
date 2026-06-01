@@ -18,6 +18,9 @@ basada en el **PUC (Plan Único de Cuentas) de Bolivia** con códigos de
 - **Estado de Resultados** (utilidad / pérdida del ejercicio).
 - **Balance General** con ecuación contable verificada.
 - **Empresa** — configuración del nombre, NIT, ejercicio, moneda, etc.
+- **Usuarios y roles** — login con sesiones PHP y 3 roles
+  (*admin*, *contador*, *consulta*); el menú y las acciones se
+  muestran/ocultan según el rol.
 
 ### Restricciones / validaciones (defensa en profundidad)
 - Códigos de cuenta de exactamente 8 dígitos, con validación en frontend
@@ -129,6 +132,27 @@ php -S 0.0.0.0:8000 -t .
 ```
 
 Abrir [http://localhost:8000](http://localhost:8000) en el navegador.
+
+### 6. Login
+
+El sistema arranca en `login.php`. Vienen tres usuarios de prueba
+cargados (todos con la misma contraseña `123456`):
+
+| Usuario    | Contraseña | Rol      | Permisos                                                                 |
+|------------|------------|----------|--------------------------------------------------------------------------|
+| `admin`    | `123456`   | admin    | Acceso total · gestiona usuarios · crea/edita/elimina cuentas · aprueba comprobantes |
+| `contador` | `123456`   | contador | Registra movimientos · crea comprobantes · ve reportes                   |
+| `consulta` | `123456`   | consulta | Sólo lectura: dashboard + reportes                                       |
+
+Si ya tenés la base de datos creada de antes y sólo querés agregar
+los usuarios, ejecutá:
+
+```bash
+mysql -u root contaubi < db/usuarios.sql
+```
+
+> **Importante**: cambiá las contraseñas por defecto desde la pantalla
+> *Usuarios* (sólo visible para el admin) en cualquier instalación real.
 
 ## Uso típico
 

@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
 
 $pageTitle  = 'Balance General';
 $pageIcon   = 'bi-layout-text-sidebar-reverse';

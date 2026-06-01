@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/conexion.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
 
 $pageTitle  = 'Comprobantes';
 $pageIcon   = 'bi-receipt';
@@ -70,7 +71,9 @@ include __DIR__ . '/layout_top.php';
 
 <div class="card-header" style="background:transparent;border:0;padding:0 0 .75rem 0">
   <span class="text-muted"><?= count($rows) ?> comprobante(s)</span>
-  <a class="btn btn-primary" href="comprobante_crear.php"><i class="bi bi-plus-circle"></i> Nuevo Asiento</a>
+  <?php if (auth_can('comprobantes.crear')): ?>
+    <a class="btn btn-primary" href="comprobante_crear.php"><i class="bi bi-plus-circle"></i> Nuevo Asiento</a>
+  <?php endif; ?>
 </div>
 
 <div class="card">
@@ -85,6 +88,7 @@ include __DIR__ . '/layout_top.php';
             <th>Número</th>
             <th>Fecha</th>
             <th>Tipo</th>
+            <th>Moneda</th>
             <th>Glosa</th>
             <th class="text-right">Debe</th>
             <th class="text-right">Haber</th>
@@ -98,6 +102,7 @@ include __DIR__ . '/layout_top.php';
             <td><span class="chip"><?= h($c['numero']) ?></span></td>
             <td><?= fecha_es($c['fecha']) ?></td>
             <td class="tipo-<?= h($c['tipo']) ?> fw-600"><?= h($c['tipo']) ?></td>
+            <td><span class="chip"><?= h(moneda_simbolo($c['moneda'])) ?></span></td>
             <td class="text-muted"><?= h(mb_strimwidth($c['glosa'],0,80,'…')) ?></td>
             <td class="text-right num"><?= money($c['total_debe']) ?></td>
             <td class="text-right num"><?= money($c['total_haber']) ?></td>
