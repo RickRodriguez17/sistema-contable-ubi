@@ -110,7 +110,7 @@ include __DIR__ . '/layout_top.php';
   <div class="no-print" style="display:flex;gap:.5rem">
     <button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
     <?php if (auth_can('cuentas.gestionar')): ?>
-      <a class="btn btn-primary" href="cuenta_crear.php"><i class="bi bi-plus-circle"></i> Nueva Cuenta Analítica</a>
+      <a class="btn btn-primary" href="cuenta_crear.php"><i class="bi bi-plus-circle"></i> Nueva Cuenta</a>
     <?php endif; ?>
   </div>
 </div>
@@ -173,6 +173,9 @@ include __DIR__ . '/layout_top.php';
               <?php endif; ?>
             </td>
             <td class="text-center no-print">
+              <a class="btn btn-ghost btn-sm" href="cuenta_ver.php?id=<?= (int)$r['id'] ?>" title="Ver detalle">
+                <i class="bi bi-eye"></i>
+              </a>
               <?php if (auth_can('cuentas.gestionar')): ?>
                 <a class="btn btn-ghost btn-sm" href="cuenta_editar.php?id=<?= (int)$r['id'] ?>" title="Editar">
                   <i class="bi bi-pencil"></i>

@@ -14,6 +14,7 @@ USE contaubi;
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS movimientos;
 DROP TABLE IF EXISTS comprobantes;
+DROP TABLE IF EXISTS tipos_cambio;
 DROP TABLE IF EXISTS cuentas;
 DROP TABLE IF EXISTS usuarios;
 DROP TABLE IF EXISTS empresa;
@@ -61,7 +62,7 @@ CREATE TABLE cuentas (
     cuenta_analitica  TINYINT      NOT NULL DEFAULT 0,
     nivel             TINYINT      NOT NULL DEFAULT 5,
     nombre            VARCHAR(160) NOT NULL,
-    descripcion       TEXT,
+    descripcion       VARCHAR(500) DEFAULT '',
     naturaleza        ENUM('DEUDORA','ACREEDORA') NOT NULL,
     es_imputable      TINYINT(1)   NOT NULL DEFAULT 0,
     es_puct           TINYINT(1)   NOT NULL DEFAULT 1,
@@ -79,22 +80,51 @@ CREATE TABLE cuentas (
 -- Comprobantes (cabecera del asiento)
 -- ------------------------------------------------------------
 CREATE TABLE comprobantes (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    numero      VARCHAR(20) NOT NULL,
-    tipo        ENUM('INGRESO','EGRESO','TRASPASO','APERTURA','CIERRE','AJUSTE') NOT NULL DEFAULT 'TRASPASO',
-    fecha       DATE NOT NULL,
-    glosa       VARCHAR(255) NOT NULL,
-    moneda      VARCHAR(10) NOT NULL DEFAULT 'Bs.',
-    estado      ENUM('BORRADOR','APROBADO','ANULADO') NOT NULL DEFAULT 'BORRADOR',
-    total_debe  DECIMAL(14,2) NOT NULL DEFAULT 0,
-    total_haber DECIMAL(14,2) NOT NULL DEFAULT 0,
-    creado_por  VARCHAR(80) DEFAULT 'sistema',
-    creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    numero          VARCHAR(20) NOT NULL,
+    tipo            ENUM('INGRESO','EGRESO','TRASPASO','APERTURA','CIERRE','AJUSTE') NOT NULL DEFAULT 'TRASPASO',
+    fecha           DATE NOT NULL,
+    glosa           VARCHAR(255) NOT NULL,
+    moneda          ENUM('BOB','USD','UFV') NOT NULL DEFAULT 'BOB',
+    tc_usd          DECIMAL(14,6) NOT NULL DEFAULT 0,
+    tc_ufv          DECIMAL(14,6) NOT NULL DEFAULT 0,
+    tipo_cambio_id  INT NULL,
+    estado          ENUM('BORRADOR','APROBADO','ANULADO') NOT NULL DEFAULT 'BORRADOR',
+    total_debe      DECIMAL(14,2) NOT NULL DEFAULT 0,
+    total_haber     DECIMAL(14,2) NOT NULL DEFAULT 0,
+    creado_por      VARCHAR(80) DEFAULT 'sistema',
+    creado_en       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_numero (numero),
     KEY idx_fecha (fecha),
-    KEY idx_estado (estado)
+    KEY idx_estado (estado),
+    KEY idx_moneda (moneda),
+    CONSTRAINT chk_total_debe_no_negativo  CHECK (total_debe  >= 0),
+    CONSTRAINT chk_total_haber_no_negativo CHECK (total_haber >= 0),
+    CONSTRAINT chk_tc_usd_no_negativo      CHECK (tc_usd >= 0),
+    CONSTRAINT chk_tc_ufv_no_negativo      CHECK (tc_ufv >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Tipos de cambio históricos (Bs ↔ USD y UFV)
+-- Cada fila guarda las tasas vigentes en una fecha. Los comprobantes
+-- pueden leer la tasa del día o sobreescribirla manualmente.
+-- ------------------------------------------------------------
+CREATE TABLE tipos_cambio (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    fecha     DATE NOT NULL,
+    tasa_usd  DECIMAL(14,6) NOT NULL DEFAULT 0,   -- 1 USD = ? BOB
+    ufv       DECIMAL(14,6) NOT NULL DEFAULT 0,   -- valor UFV del día (BOB)
+    nota      VARCHAR(160) DEFAULT '',
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_fecha (fecha),
+    KEY idx_fecha (fecha),
+    CONSTRAINT chk_tasa_usd_no_negativa CHECK (tasa_usd >= 0),
+    CONSTRAINT chk_ufv_no_negativa      CHECK (ufv      >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO tipos_cambio (fecha, tasa_usd, ufv, nota)
+VALUES (CURDATE(), 6.960000, 2.480000, 'Tasas iniciales — actualizar diariamente');
 
 -- ------------------------------------------------------------
 -- Movimientos (líneas del asiento — partida doble)
@@ -110,7 +140,9 @@ CREATE TABLE movimientos (
     CONSTRAINT fk_mov_comp   FOREIGN KEY (comprobante_id) REFERENCES comprobantes(id) ON DELETE CASCADE,
     CONSTRAINT fk_mov_cuenta FOREIGN KEY (cuenta_id)      REFERENCES cuentas(id) ON DELETE RESTRICT,
     KEY idx_comp (comprobante_id),
-    KEY idx_cuenta (cuenta_id)
+    KEY idx_cuenta (cuenta_id),
+    CONSTRAINT chk_mov_debe_no_negativo  CHECK (debe  >= 0),
+    CONSTRAINT chk_mov_haber_no_negativo CHECK (haber >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

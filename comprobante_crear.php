@@ -22,17 +22,24 @@ $activePage = 'comprobante_crear';
 $cuentas = cuentas_imputables($conn);
 
 $error = '';
+$tcDia = tipo_cambio_vigente($conn) ?? ['id'=>null,'tasa_usd'=>0,'ufv'=>0,'fecha'=>date('Y-m-d')];
 $old = [
     'fecha'  => date('Y-m-d'),
     'tipo'   => 'TRASPASO',
     'glosa'  => '',
+    'moneda' => 'BOB',
+    'tc_usd' => (string)$tcDia['tasa_usd'],
+    'tc_ufv' => (string)$tcDia['ufv'],
     'lineas' => [],
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $old['fecha'] = $_POST['fecha'] ?? date('Y-m-d');
-    $old['tipo']  = $_POST['tipo']  ?? 'TRASPASO';
-    $old['glosa'] = trim($_POST['glosa'] ?? '');
+    $old['fecha']  = $_POST['fecha']  ?? date('Y-m-d');
+    $old['tipo']   = $_POST['tipo']   ?? 'TRASPASO';
+    $old['glosa']  = trim($_POST['glosa'] ?? '');
+    $old['moneda'] = $_POST['moneda'] ?? 'BOB';
+    $old['tc_usd'] = trim((string)($_POST['tc_usd'] ?? '0'));
+    $old['tc_ufv'] = trim((string)($_POST['tc_ufv'] ?? '0'));
 
     $cuentaIds = $_POST['cuenta_id'] ?? [];
     $debes     = $_POST['debe']      ?? [];
@@ -59,18 +66,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $old['lineas'] = $lineas;
 
+    $tc_usd_val = (float)str_replace(',', '.', $old['tc_usd']);
+    $tc_ufv_val = (float)str_replace(',', '.', $old['tc_ufv']);
+
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $old['fecha']))         $error = 'Fecha inválida.';
     elseif ($old['fecha'] < $EMPRESA['fecha_inicio_ejercicio'] ||
             $old['fecha'] > $EMPRESA['fecha_cierre_ejercicio'])       $error = 'La fecha está fuera del período contable activo.';
     elseif (!in_array($old['tipo'], ['INGRESO','EGRESO','TRASPASO','APERTURA','CIERRE','AJUSTE'], true))
                                                                      $error = 'Tipo de comprobante inválido.';
+    elseif (!in_array($old['moneda'], ['BOB','USD','UFV'], true))    $error = 'Moneda inválida.';
+    elseif ($tc_usd_val < 0 || $tc_ufv_val < 0)                      $error = 'El tipo de cambio no puede ser negativo.';
+    elseif ($old['moneda'] === 'USD' && $tc_usd_val <= 0)            $error = 'Debe ingresar el tipo de cambio USD para el comprobante.';
+    elseif ($old['moneda'] === 'UFV' && $tc_ufv_val <= 0)            $error = 'Debe ingresar el valor de la UFV para el comprobante.';
     elseif ($old['glosa'] === '')                                    $error = 'La glosa es obligatoria.';
     elseif (mb_strlen($old['glosa']) > 255)                          $error = 'La glosa supera los 255 caracteres.';
-    elseif ($excedeDecimales)                                        $error = 'Los montos sólo admiten hasta 2 decimales.';
+    elseif ($excedeDecimales)                                        $error = 'Montos inválidos: deben ser positivos y con hasta 2 decimales (sin signo, sin separadores).';
     elseif (count($lineas) < 2)                                      $error = 'Se requieren al menos 2 líneas con monto.';
     elseif (!comprobante_cuadra($totalD, $totalH))                   $error = 'El asiento no cuadra: Debe ' . money($totalD) . ' ≠ Haber ' . money($totalH) . '.';
     else {
-        /* Validar cada línea */
+        /* Validar cada línea (defensa en profundidad: también forzamos abs en BD por CHECK >= 0) */
         $idsValidos = array_column($cuentas, 'id');
         foreach ($lineas as $i => $l) {
             $n = $i + 1;
@@ -83,13 +97,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$error) {
         $numero = siguiente_numero_comprobante($conn, (int)$EMPRESA['ejercicio']);
+        $tcId   = $tcDia['id'] ?? null;
         $conn->begin_transaction();
         try {
             $stmt = $conn->prepare("INSERT INTO comprobantes
-                (numero, tipo, fecha, glosa, moneda, estado, total_debe, total_haber)
-                VALUES (?, ?, ?, ?, ?, 'BORRADOR', ?, ?)");
-            $stmt->bind_param('sssssdd',
-                $numero, $old['tipo'], $old['fecha'], $old['glosa'], $EMPRESA['moneda'], $totalD, $totalH);
+                (numero, tipo, fecha, glosa, moneda, tc_usd, tc_ufv, tipo_cambio_id, estado, total_debe, total_haber)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', ?, ?)");
+            $stmt->bind_param('sssssddidd',
+                $numero, $old['tipo'], $old['fecha'], $old['glosa'], $old['moneda'],
+                $tc_usd_val, $tc_ufv_val, $tcId, $totalD, $totalH);
             $stmt->execute();
             $cid = $conn->insert_id;
 
@@ -98,8 +114,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, ?, ?)");
             foreach ($lineas as $i => $l) {
                 $orden = $i + 1;
+                /* Defensa en profundidad: forzamos valor absoluto antes de insertar. */
+                $debeAbs  = abs((float)$l['debe']);
+                $haberAbs = abs((float)$l['haber']);
                 $stmtL->bind_param('iiddsi',
-                    $cid, $l['cuenta_id'], $l['debe'], $l['haber'], $l['glosa_linea'], $orden);
+                    $cid, $l['cuenta_id'], $debeAbs, $haberAbs, $l['glosa_linea'], $orden);
                 $stmtL->execute();
             }
             $conn->commit();
@@ -150,14 +169,49 @@ include __DIR__ . '/layout_top.php';
       </div>
       <div class="form-group">
         <label class="form-label">Moneda</label>
-        <input type="text" class="form-control" value="<?= h($EMPRESA['moneda']) ?>" disabled>
+        <select name="moneda" id="f_moneda" class="form-control" onchange="actualizarMoneda()">
+          <?php foreach (monedas_disponibles() as $cod => $info): ?>
+            <option value="<?= h($cod) ?>" <?= $old['moneda']===$cod?'selected':'' ?>>
+              <?= h($info['simbolo']) ?> · <?= h($info['nombre']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
       </div>
     </div>
+
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Tipo de cambio USD (1 USD = ? Bs.)</label>
+        <input type="number" step="0.000001" min="0" name="tc_usd" id="f_tc_usd"
+               class="form-control text-right num"
+               value="<?= h($old['tc_usd']) ?>"
+               placeholder="6.96">
+        <div class="form-hint">
+          Sugerido (<?= h($tcDia['fecha']) ?>): <strong><?= number_format((float)$tcDia['tasa_usd'],6,'.','') ?></strong>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('f_tc_usd').value='<?= number_format((float)$tcDia['tasa_usd'],6,'.','') ?>'">usar sugerido</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">UFV del día (1 UFV = ? Bs.)</label>
+        <input type="number" step="0.000001" min="0" name="tc_ufv" id="f_tc_ufv"
+               class="form-control text-right num"
+               value="<?= h($old['tc_ufv']) ?>"
+               placeholder="2.48">
+        <div class="form-hint">
+          Sugerido (<?= h($tcDia['fecha']) ?>): <strong><?= number_format((float)$tcDia['ufv'],6,'.','') ?></strong>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('f_tc_ufv').value='<?= number_format((float)$tcDia['ufv'],6,'.','') ?>'">usar sugerido</button>
+          · <a href="tipos_cambio.php">administrar</a>
+        </div>
+      </div>
+    </div>
+
     <div class="form-group">
-      <label class="form-label">Glosa (descripción del asiento)</label>
-      <input type="text" name="glosa" class="form-control" maxlength="255" required
+      <label class="form-label">Glosa (descripción del asiento) <span class="text-muted">(máx 255)</span></label>
+      <input type="text" name="glosa" id="f_glosa" class="form-control" maxlength="255" required
              placeholder="Ej: Compra de mercadería al contado según factura N° 123"
-             value="<?= h($old['glosa']) ?>">
+             value="<?= h($old['glosa']) ?>"
+             oninput="contarChars('f_glosa','contGlosa',255)">
+      <div class="form-hint"><span id="contGlosa">0</span> / 255 caracteres.</div>
     </div>
   </div>
 </div>
@@ -275,14 +329,15 @@ function limitarDecimales(inp){
 }
 function formatearMonto(inp){
   if (inp.value === '' || inp.value === '.') { inp.value = ''; return; }
-  const n = parseFloat(inp.value);
+  /* Valor absoluto siempre */
+  const n = Math.abs(parseFloat(inp.value));
   if (isNaN(n) || n <= 0) { inp.value = ''; return; }
   inp.value = n.toFixed(2);
 }
 function actualizarTotales(){
   let td=0, th=0;
-  document.querySelectorAll('input[name="debe[]"]').forEach(i => td += parseFloat(i.value||0));
-  document.querySelectorAll('input[name="haber[]"]').forEach(i => th += parseFloat(i.value||0));
+  document.querySelectorAll('input[name="debe[]"]').forEach(i => td += Math.abs(parseFloat(i.value||0)));
+  document.querySelectorAll('input[name="haber[]"]').forEach(i => th += Math.abs(parseFloat(i.value||0)));
   document.getElementById('totDebe').textContent  = td.toFixed(2);
   document.getElementById('totHaber').textContent = th.toFixed(2);
   const diff = (td - th);
@@ -290,6 +345,20 @@ function actualizarTotales(){
   el.textContent = diff.toFixed(2);
   el.classList.toggle('cuadre-ok',  Math.abs(diff) < 0.005 && td > 0);
   el.classList.toggle('cuadre-mal', Math.abs(diff) >= 0.005);
+}
+function actualizarMoneda(){
+  const m = document.getElementById('f_moneda').value;
+  const tcUsd = document.getElementById('f_tc_usd');
+  const tcUfv = document.getElementById('f_tc_ufv');
+  /* USD obligatorio si moneda=USD; UFV obligatorio si moneda=UFV. */
+  tcUsd.required = (m === 'USD');
+  tcUfv.required = (m === 'UFV');
+}
+function contarChars(idCampo, idCont, max){
+  const v = document.getElementById(idCampo).value || '';
+  const el = document.getElementById(idCont);
+  el.textContent = v.length;
+  el.style.color = (v.length > max ? 'var(--danger)' : (v.length >= max*0.85 ? 'var(--warn)' : ''));
 }
 function sincronDebe(inp){
   if (parseFloat(inp.value||0) > 0) {
@@ -306,6 +375,8 @@ function sincronHaber(inp){
   actualizarTotales();
 }
 actualizarTotales();
+actualizarMoneda();
+contarChars('f_glosa','contGlosa',255);
 </script>
 
 <?php include __DIR__ . '/layout_bottom.php'; ?>
