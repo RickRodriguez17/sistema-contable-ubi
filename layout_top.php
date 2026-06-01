@@ -25,6 +25,7 @@ $nav = [
     ['Diario',               '',                          '',                  '',                                'comprobantes.ver'],
     ['Comprobantes',         'comprobantes.php',          'comprobantes',      'bi-receipt',                      'comprobantes.ver'],
     ['Nuevo Asiento',        'comprobante_crear.php',     'comprobante_crear', 'bi-plus-circle',                  'comprobantes.crear'],
+    ['Tipos de Cambio · UFV','tipos_cambio.php',          'tipos_cambio',      'bi-currency-exchange',            'cuentas.gestionar'],
     ['Libro Diario',         'libro_diario.php',          'libro_diario',      'bi-journal-text',                 'reportes.ver'],
 
     ['Reportes',             '',                          '',                  '',                                'reportes.ver'],
