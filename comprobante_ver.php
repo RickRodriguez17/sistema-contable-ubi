@@ -103,8 +103,19 @@ include __DIR__ . '/layout_top.php';
     <div class="form-grid form-grid-3" style="margin-bottom:1rem">
       <div><div class="form-label">Fecha</div><div class="fw-600"><?= fecha_es($cur['fecha']) ?></div></div>
       <div><div class="form-label">Tipo</div><div class="fw-600 tipo-<?= h($cur['tipo']) ?>"><?= h($cur['tipo']) ?></div></div>
-      <div><div class="form-label">Moneda</div><div class="fw-600"><?= h($cur['moneda']) ?></div></div>
+      <div><div class="form-label">Moneda</div><div class="fw-600"><?= h(moneda_simbolo($cur['moneda'])) ?> · <?= h($cur['moneda']) ?></div></div>
     </div>
+
+    <?php if ((float)$cur['tc_usd'] > 0 || (float)$cur['tc_ufv'] > 0): ?>
+    <div class="form-grid form-grid-2" style="margin-bottom:1rem">
+      <?php if ((float)$cur['tc_usd'] > 0): ?>
+        <div><div class="form-label">Tipo de cambio USD</div><div class="fw-600 num">1 USD = <?= number_format((float)$cur['tc_usd'],6,'.',',') ?> Bs.</div></div>
+      <?php endif; ?>
+      <?php if ((float)$cur['tc_ufv'] > 0): ?>
+        <div><div class="form-label">UFV del día</div><div class="fw-600 num">1 UFV = <?= number_format((float)$cur['tc_ufv'],6,'.',',') ?> Bs.</div></div>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
     <div class="form-group">
       <div class="form-label">Glosa</div>
       <div class="fw-600" style="font-size:1rem"><?= h($cur['glosa']) ?></div>
@@ -127,16 +138,16 @@ include __DIR__ . '/layout_top.php';
             <td class="text-muted">#<?= $i+1 ?></td>
             <td><span class="chip"><?= h($l['codigo']) ?></span> <?= h($l['nombre']) ?></td>
             <td class="text-muted"><?= h($l['glosa_linea']) ?></td>
-            <td class="text-right num <?= $l['debe']>0?'fw-600':'text-muted' ?>"><?= money($l['debe']) ?></td>
-            <td class="text-right num <?= $l['haber']>0?'fw-600':'text-muted' ?>"><?= money($l['haber']) ?></td>
+            <td class="text-right num <?= $l['debe']>0?'fw-600':'text-muted' ?>"><?= money(abs((float)$l['debe'])) ?></td>
+            <td class="text-right num <?= $l['haber']>0?'fw-600':'text-muted' ?>"><?= money(abs((float)$l['haber'])) ?></td>
           </tr>
           <?php endforeach; ?>
         </tbody>
         <tfoot>
           <tr>
             <td colspan="3" class="text-right">TOTALES</td>
-            <td class="text-right num"><?= money($cur['total_debe']) ?></td>
-            <td class="text-right num"><?= money($cur['total_haber']) ?></td>
+            <td class="text-right num"><?= money(abs((float)$cur['total_debe'])) ?></td>
+            <td class="text-right num"><?= money(abs((float)$cur['total_haber'])) ?></td>
           </tr>
           <tr>
             <td colspan="3" class="text-right">CUADRE</td>

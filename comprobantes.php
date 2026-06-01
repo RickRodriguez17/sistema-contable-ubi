@@ -88,6 +88,7 @@ include __DIR__ . '/layout_top.php';
             <th>Número</th>
             <th>Fecha</th>
             <th>Tipo</th>
+            <th>Moneda</th>
             <th>Glosa</th>
             <th class="text-right">Debe</th>
             <th class="text-right">Haber</th>
@@ -101,6 +102,7 @@ include __DIR__ . '/layout_top.php';
             <td><span class="chip"><?= h($c['numero']) ?></span></td>
             <td><?= fecha_es($c['fecha']) ?></td>
             <td class="tipo-<?= h($c['tipo']) ?> fw-600"><?= h($c['tipo']) ?></td>
+            <td><span class="chip"><?= h(moneda_simbolo($c['moneda'])) ?></span></td>
             <td class="text-muted"><?= h(mb_strimwidth($c['glosa'],0,80,'…')) ?></td>
             <td class="text-right num"><?= money($c['total_debe']) ?></td>
             <td class="text-right num"><?= money($c['total_haber']) ?></td>
